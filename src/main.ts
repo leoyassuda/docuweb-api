@@ -1,19 +1,28 @@
 
 import { NestFactory } from '@nestjs/core';
-import { Transport, MicroserviceOptions } from '@nestjs/microservices';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
-    transport: Transport.RMQ,
-    options: {
-      urls: ['amqp://localhost:5672'],
-      queue: 'docs_queue',
-      queueOptions: {
-        durable: false
-      }
-    }
-  });
-  app.listen(() => console.log('Microservice is listening'))
+    const app = await NestFactory.create<NestFastifyApplication>(
+        AppModule,
+        new FastifyAdapter({
+            logger: true
+        })
+    );
+
+    const configSwagger = new DocumentBuilder()
+        .setTitle('Docuweb API')
+        .setDescription('The API for usage docuweb')
+        .setVersion('1.0')
+        .addTag('docuweb')
+        .build();
+
+    const document = SwaggerModule.createDocument(app, configSwagger);
+    SwaggerModule.setup('api', app, document)
+
+    app.setGlobalPrefix('api');
+    app.listen(3000);
 }
 bootstrap();
